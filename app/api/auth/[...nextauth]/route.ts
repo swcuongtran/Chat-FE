@@ -1,24 +1,21 @@
 import NextAuth, { DefaultSession } from "next-auth";
 import KeycloakProvider from "next-auth/providers/keycloak";
 
-// 1. Định nghĩa thêm accessToken cho Session
 declare module "next-auth" {
   interface Session {
     accessToken?: string;
     user: {
-      id?: string;
+      id?: string; // Khai báo thêm trường ID
     } & DefaultSession["user"];
   }
 }
 
-// 2. Định nghĩa thêm accessToken cho JWT
 declare module "next-auth/jwt" {
   interface JWT {
     accessToken?: string;
   }
 }
 
-// 3. Khởi tạo NextAuth
 const handler = NextAuth({
   providers: [
     KeycloakProvider({
@@ -29,15 +26,17 @@ const handler = NextAuth({
   ],
   callbacks: {
     async jwt({ token, account }) {
-      // Khi user đăng nhập thành công, account sẽ có dữ liệu
       if (account) {
         token.accessToken = account.access_token;
       }
       return token;
     },
     async session({ session, token }) {
-      // Gán token vào session một cách an toàn (không bị lỗi TypeScript nữa)
       session.accessToken = token.accessToken;
+      // Trích xuất User ID (sub) từ token của Keycloak gán vào phiên đăng nhập
+      if (session.user && token.sub) {
+        session.user.id = token.sub;
+      }
       return session;
     },
   },
